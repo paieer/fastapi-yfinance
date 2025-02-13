@@ -3,10 +3,6 @@ import yfinance as yf
 
 app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"greeting": "Hello, World!", "message": "Welcome to FastAPI!"}
-
 @app.get("/tickers/{symbol}")
 async def get_stock_info(symbol: str):
     dat = yf.Ticker(symbol)
