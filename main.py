@@ -8,7 +8,7 @@ import os
 
 app = FastAPI()
 
-HTTP_PROXY = os.getenv("HTTP_PROXY", "")
+HTTP_PROXY = os.getenv("HTTP_PROXY", None)
 VALID_API_KEY = os.getenv("API_KEY", "default-secret-key")
 
 async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
@@ -23,10 +23,7 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
 async def get_stock_info(symbol: str):
     try:
         
-        if HTTP_PROXY !="":
-            dat = yf.Ticker(symbol).history(proxy=HTTP_PROXY)
-        else:
-            dat = yf.Ticker(symbol)
+        dat = yf.Ticker(symbol,proxy=HTTP_PROXY)
         info = dat.info
         
         # 处理无效的股票代码或空数据
