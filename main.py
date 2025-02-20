@@ -8,8 +8,8 @@ import os
 
 app = FastAPI()
 
-HTTP_PROXY = os.getenv("HTTP_PROXY", None)
-VALID_API_KEY = os.getenv("API_KEY", "default-secret-key")
+HTTP_PROXY = os.getenv("HTTP_PROXY", "").strip() or None
+VALID_API_KEY = os.getenv("API_KEY", "default-secret-key").strip()
 
 async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
     if api_key != VALID_API_KEY:
