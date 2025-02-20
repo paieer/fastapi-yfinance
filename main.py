@@ -2,9 +2,13 @@ from fastapi import FastAPI, Depends, HTTPException, Header
 import yfinance as yf
 import os
 
+# from dotenv import load_dotenv
+# # 加载 .env 文件中的环境变量
+# load_dotenv()
+
 app = FastAPI()
 
-# 从环境变量获取有效API密钥
+HTTP_PROXY = os.getenv("HTTP_PROXY", "")
 VALID_API_KEY = os.getenv("API_KEY", "default-secret-key")
 
 async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
@@ -18,7 +22,11 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
 @app.get("/tickers/{symbol}", dependencies=[Depends(verify_api_key)])
 async def get_stock_info(symbol: str):
     try:
-        dat = yf.Ticker(symbol)
+        
+        if HTTP_PROXY !="":
+            dat = yf.Ticker(symbol).history(proxy=HTTP_PROXY)
+        else:
+            dat = yf.Ticker(symbol)
         info = dat.info
         
         # 处理无效的股票代码或空数据
