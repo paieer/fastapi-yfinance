@@ -98,13 +98,6 @@ async def download_stock_data(symbol: str, start: str, end: str):
         else:
             dat = yf.download(symbol, start=start, end=end, proxy=HTTP_PROXY)
         
-        if dat.empty:
-            return {
-                "status": False,
-                "error": "No data found for the given symbol and date range",
-                "symbol": symbol
-            }
-        
         return {
             "status": True,
             "symbol": symbol,
