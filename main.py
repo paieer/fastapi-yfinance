@@ -112,7 +112,7 @@ async def download_stock_data(symbol: str, start: str, end: str):
         return {
             "status": True,
             "symbol": symbol,
-            "result": result
+            "result": json.dumps(result)
         }
         
     except Exception as e:
