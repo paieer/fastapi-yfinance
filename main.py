@@ -70,8 +70,8 @@ async def get_stock_info(symbol: str):
             "symbol": symbol
         }
 
-@app.get("/download/{symbol}", dependencies=[Depends(verify_api_key)])
-async def download_stock_data(symbol: str, start: str, end: str):
+@app.get("/history/{symbol}", dependencies=[Depends(verify_api_key)])
+async def history_stock_data(symbol: str, start: str, end: str):
     # Validate date format
     if not validate_date_format(start) or not validate_date_format(end):
         return {
