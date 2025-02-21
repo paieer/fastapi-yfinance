@@ -103,7 +103,7 @@ async def download_stock_data(symbol: str, start: str, end: str):
         return {
             "status": True,
             "symbol": symbol,
-            "result": dat.to_dict()
+            "result": dat.to_json()
         }
         
     except Exception as e:
