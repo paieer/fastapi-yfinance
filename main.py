@@ -40,11 +40,11 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
 async def get_stock_info(symbol: str):
     try:
         random_string = generate_random_string()
-        if SESSION_PROXY=="TRUE":
+        if SESSION_PROXY == "TRUE":
             Proxy = SESSION_A + random_string + SESSION_B 
-            dat = yf.Ticker(symbol,proxy=Proxy)
+            dat = yf.Ticker(symbol, proxy=Proxy)
         else:
-            dat = yf.Ticker(symbol,proxy=HTTP_PROXY)
+            dat = yf.Ticker(symbol, proxy=HTTP_PROXY)
             
         info = dat.info
         
@@ -54,7 +54,7 @@ async def get_stock_info(symbol: str):
                 "status": False,
                 "error": "Invalid stock symbol",
                 "symbol": symbol
-            }, 404
+            }
             
         return {
             "status": True,
@@ -68,7 +68,7 @@ async def get_stock_info(symbol: str):
             "status": False,
             "error": f"API request failed: {str(e)}",
             "symbol": symbol
-        }, 500
+        }
 
 @app.get("/download/{symbol}", dependencies=[Depends(verify_api_key)])
 async def download_stock_data(symbol: str, start: str, end: str):
@@ -78,7 +78,7 @@ async def download_stock_data(symbol: str, start: str, end: str):
             "status": False,
             "error": "Invalid date format. Please use yyyy-MM-dd.",
             "symbol": symbol
-        }, 400
+        }
 
     # Validate date range
     start_date = datetime.strptime(start, "%Y-%m-%d")
@@ -88,27 +88,27 @@ async def download_stock_data(symbol: str, start: str, end: str):
             "status": False,
             "error": "End date must be greater than start date.",
             "symbol": symbol
-        }, 400
+        }
 
     try:
         if SESSION_PROXY == "TRUE":
             random_string = generate_random_string()
             Proxy = SESSION_A + random_string + SESSION_B
-            data = yf.download(symbol, start=start, end=end, proxy=Proxy)
+            dat = yf.download(symbol, start=start, end=end, proxy=Proxy)
         else:
-            data = yf.download(symbol, start=start, end=end, proxy=HTTP_PROXY)
+            dat = yf.download(symbol, start=start, end=end, proxy=HTTP_PROXY)
         
-        if data.empty:
+        if dat.empty:
             return {
                 "status": False,
                 "error": "No data found for the given symbol and date range",
                 "symbol": symbol
-            }, 404
+            }
         
         return {
             "status": True,
             "symbol": symbol,
-            "result": data.to_dict()
+            "result": dat.to_dict()
         }
         
     except Exception as e:
@@ -116,4 +116,4 @@ async def download_stock_data(symbol: str, start: str, end: str):
             "status": False,
             "error": f"API request failed: {str(e)}",
             "symbol": symbol
-        }, 500
+        }
