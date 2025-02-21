@@ -3,6 +3,7 @@ import yfinance as yf
 import os
 import random
 import string
+import json
 from datetime import datetime
 # from dotenv import load_dotenv
 # # 加载 .env 文件中的环境变量
@@ -42,14 +43,13 @@ async def get_stock_info(symbol: str):
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
             Proxy = SESSION_A + random_string + SESSION_B 
-            dat = yf.Ticker(symbol, proxy=Proxy)
+            ticker = yf.Ticker(symbol, proxy=Proxy)
         else:
-            dat = yf.Ticker(symbol, proxy=HTTP_PROXY)
+            ticker = yf.Ticker(symbol, proxy=HTTP_PROXY)
             
-        info = dat.info
-        
+        result = ticker.info
         # 处理无效的股票代码或空数据
-        if not info or 'symbol' not in info:
+        if not result or 'symbol' not in result:
             return {
                 "status": False,
                 "error": "Invalid stock symbol",
@@ -59,7 +59,7 @@ async def get_stock_info(symbol: str):
         return {
             "status": True,
             "symbol": symbol,
-            "result": info
+            "result": result
         }
         
     except Exception as e:
@@ -91,19 +91,28 @@ async def download_stock_data(symbol: str, start: str, end: str):
         }
 
     try:
-        dat = yf.download(symbol, start=start, end=end, proxy=HTTP_PROXY)
-        
-        if dat.empty:
+        random_string = generate_random_string()
+        if SESSION_PROXY == "TRUE":
+            Proxy = SESSION_A + random_string + SESSION_B 
+            ticker = yf.Ticker(symbol, proxy=Proxy)
+            df = ticker.history(start=start, end=end, proxy=Proxy)
+        else:
+            ticker = yf.Ticker(symbol, proxy=HTTP_PROXY)
+            df = ticker.history(start=start, end=end, proxy=HTTP_PROXY)
+
+        if df.empty:
             return {
                 "status": False,
                 "error": "No data found for the given symbol and date range.",
                 "symbol": symbol
             }
+        
+        result = df.to_json(orient="index")
 
         return {
             "status": True,
             "symbol": symbol,
-            "result": dat.to_json()
+            "result": result
         }
         
     except Exception as e:
