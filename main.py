@@ -147,7 +147,7 @@ async def periods_stock_data(symbol: str, periods: str):
                 "symbol": symbol
             }
         
-        result = df.to_string()
+        result = df.to_csv()
 
         return {
             "status": True,
