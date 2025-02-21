@@ -91,13 +91,15 @@ async def download_stock_data(symbol: str, start: str, end: str):
         }
 
     try:
-        if SESSION_PROXY == "TRUE":
-            random_string = generate_random_string()
-            Proxy = SESSION_A + random_string + SESSION_B
-            dat = yf.download(symbol, start=start, end=end, proxy=Proxy)
-        else:
-            dat = yf.download(symbol, start=start, end=end, proxy=HTTP_PROXY)
+        dat = yf.download(symbol, start=start, end=end, proxy=HTTP_PROXY)
         
+        if dat.empty:
+            return {
+                "status": False,
+                "error": "No data found for the given symbol and date range.",
+                "symbol": symbol
+            }
+
         return {
             "status": True,
             "symbol": symbol,
