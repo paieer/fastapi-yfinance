@@ -107,12 +107,12 @@ async def download_stock_data(symbol: str, start: str, end: str):
                 "symbol": symbol
             }
         
-        result = df.to_json(orient="index")
+        result = json.loads(df.to_json(orient="index"))
 
         return {
             "status": True,
             "symbol": symbol,
-            "result": json.dumps(result)
+            "result": result
         }
         
     except Exception as e:
