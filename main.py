@@ -121,3 +121,43 @@ async def history_stock_data(symbol: str, start: str, end: str):
             "error": f"API request failed: {str(e)}",
             "symbol": symbol
         }
+
+@app.get("/periods/{symbol}/{periods}", dependencies=[Depends(verify_api_key)])
+async def periods_stock_data(symbol: str, periods: str):
+    # Validate period value
+    valid_periods = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y']
+    if periods not in valid_periods:
+        return {
+            "status": False,
+            "error": f"Invalid period. Must be one of: {', '.join(valid_periods)}",
+            "symbol": symbol
+        }
+    try:
+        random_string = generate_random_string()
+        if SESSION_PROXY == "TRUE":
+            Proxy = SESSION_A + random_string + SESSION_B 
+            df = yf.download(symbol,period=periods,rounding=True, proxy=Proxy)
+        else:
+            df = yf.download(symbol,period=periods,rounding=True, proxy=HTTP_PROXY)
+
+        if df.empty:
+            return {
+                "status": False,
+                "error": "No data found for the given symbol and period.",
+                "symbol": symbol
+            }
+        
+        result = df.to_string()
+
+        return {
+            "status": True,
+            "symbol": symbol,
+            "result": result
+        }
+        
+    except Exception as e:
+        return {
+            "status": False,
+            "error": f"API request failed: {str(e)}",
+            "symbol": symbol
+        }
