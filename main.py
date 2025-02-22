@@ -169,9 +169,9 @@ async def periods_stock_data(symbol: str, periods: str):
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
             Proxy = SESSION_A + random_string + SESSION_B 
-            df = yf.download(symbol,period=periods,rounding=True,timeout=15,proxy=Proxy)
+            df = yf.download(symbol,period=periods,rounding=True,proxy=Proxy)
         else:
-            df = yf.download(symbol,period=periods,rounding=True,timeout=15,proxy=HTTP_PROXY)
+            df = yf.download(symbol,period=periods,rounding=True,proxy=HTTP_PROXY)
 
         if df.empty:
             return {
