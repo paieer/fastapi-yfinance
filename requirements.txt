@@ -1,4 +1,5 @@
 fastapi
 hypercorn
 yfinance
+redis
 python-dotenv

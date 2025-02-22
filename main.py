@@ -5,11 +5,28 @@ import random
 import string
 import json
 from datetime import datetime
+import redis
 # from dotenv import load_dotenv
 # # 加载 .env 文件中的环境变量
 # load_dotenv()
 
 app = FastAPI()
+
+redis_url = os.getenv("REDIS_URL")
+r1 = redis.from_url(redis_url)
+try:
+    r1.ping()
+    print("Successfully connected to Redis1!")
+except redis.exceptions.ConnectionError as e:
+    print(f"Could not connect to Redis1: {e}")
+
+redis_url = os.getenv("REDIS_PUBLIC_URL")
+r2 = redis.from_url(redis_url)
+try:
+    r2.ping()
+    print("Successfully connected to Redis2!")
+except redis.exceptions.ConnectionError as e:
+    print(f"Could not connect to Redis2: {e}")
 
 SESSION_PROXY= os.getenv("SESSION_PROXY", "").strip() or None
 SESSION_A= os.getenv("SESSION_A", "").strip() or None
