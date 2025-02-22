@@ -6,6 +6,7 @@ import string
 import json
 from datetime import datetime
 import redis
+import base64
 # from dotenv import load_dotenv
 # # 加载 .env 文件中的环境变量
 # load_dotenv()
@@ -13,21 +14,14 @@ import redis
 app = FastAPI()
 
 redis_url = os.getenv("REDIS_URL")
-r1 = redis.from_url(redis_url)
+r = redis.from_url(redis_url)
 try:
-    r1.ping()
-    print("Successfully connected to Redis1!")
+    r.ping()
+    print("Successfully connected to Redis!")
 except redis.exceptions.ConnectionError as e:
-    print(f"Could not connect to Redis1: {e}")
+    print(f"Could not connect to Redis: {e}")
 
-redis_url = os.getenv("REDIS_PUBLIC_URL")
-r2 = redis.from_url(redis_url)
-try:
-    r2.ping()
-    print("Successfully connected to Redis2!")
-except redis.exceptions.ConnectionError as e:
-    print(f"Could not connect to Redis2: {e}")
-
+CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", 3600))  # Default to 1 hour if not specified
 SESSION_PROXY= os.getenv("SESSION_PROXY", "").strip() or None
 SESSION_A= os.getenv("SESSION_A", "").strip() or None
 SESSION_B= os.getenv("SESSION_B", "").strip() or None
@@ -56,6 +50,16 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
 
 @app.get("/tickers/{symbol}", dependencies=[Depends(verify_api_key)])
 async def get_stock_info(symbol: str):
+    cache_key = f"stock_info:{symbol}"
+    cached_data = r.get(cache_key)
+    if cached_data:
+        return {
+            "status": True,
+            "symbol": symbol,
+            "result": json.loads(cached_data),
+            "cache": "hit"
+        }
+    
     try:
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
@@ -72,7 +76,8 @@ async def get_stock_info(symbol: str):
                 "error": "Invalid stock symbol",
                 "symbol": symbol
             }
-            
+        
+        r.setex(cache_key, CACHE_EXPIRATION, json.dumps(result))
         return {
             "status": True,
             "symbol": symbol,
@@ -149,6 +154,17 @@ async def periods_stock_data(symbol: str, periods: str):
             "error": f"Invalid period. Must be one of: {', '.join(valid_periods)}",
             "symbol": symbol
         }
+    
+    cache_key = f"stock_periods:{symbol}:{periods}"
+    cached_data = r.get(cache_key)
+    if cached_data:
+        return {
+            "status": True,
+            "symbol": symbol,
+            "result": cached_data.decode(),
+            "cache": "hit"
+        }
+        
     try:
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
@@ -165,7 +181,9 @@ async def periods_stock_data(symbol: str, periods: str):
             }
         
         result = df.to_csv()
+        result = base64.urlsafe_b64decode(result.encode()).decode()
 
+        r.setex(cache_key, CACHE_EXPIRATION, result)
         return {
             "status": True,
             "symbol": symbol,
