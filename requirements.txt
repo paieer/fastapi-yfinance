@@ -1,5 +1,5 @@
 fastapi
-hypercorn
+hypercorn[uvloop]
 yfinance
 redis
 python-dotenv
