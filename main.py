@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
+import requests
 import yfinance as yf
 import os
 import random
@@ -195,4 +196,54 @@ async def periods_stock_data(symbol: str, periods: str):
             "status": False,
             "error": f"API request failed: {str(e)}",
             "symbol": symbol
+        }
+
+@app.get("/stock/symbol/all")
+def get_all_us_stock_tickers():
+    """
+    获取所有美股股票的代码 (tickers)。
+    Returns:
+        list: 包含所有美股股票代码的列表。
+    """
+
+    cache_key = "all_stock_tickers"
+    cached_data = r.get(cache_key)
+    if cached_data:
+        return {
+        "status": True,
+        "result": json.loads(cached_data),
+        "cache": "hit"
+        }
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.nasdaq.com/',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'application/json'
+        }
+        
+        url = "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=9999"
+        response = requests.get(url, headers=headers, timeout=10)
+        data = response.json()
+        
+        df = data['data']['table']['rows']
+        tickers = [row['symbol'] for row in df]
+        
+        # 过滤逻辑： 指数一般含有 "^" 字符
+        tickers = [ticker for ticker in tickers if "^" not in ticker]
+        
+        # Replace "/" with "-" in tickers
+        tickers = [ticker.replace("/", "-") for ticker in tickers]
+
+        # If no cache, store the result in Redis
+        r.setex(cache_key, CACHE_EXPIRATION, json.dumps(tickers))
+        return {
+            "status": True,
+            "result": tickers
+        }
+
+    except Exception as e:
+        return {
+            "status": False,
+            "error": f"request failed: {str(e)}"
         }
