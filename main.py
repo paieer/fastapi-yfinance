@@ -23,6 +23,8 @@ except redis.exceptions.ConnectionError as e:
     print(f"Could not connect to Redis: {e}")
 
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", 3600))  # Default to 1 hour if not specified
+CACHE_EXPIRATION_SHORT = int(os.getenv("CACHE_EXPIRATION_SHORT", 10*60)) 
+CACHE_EXPIRATION_LONG = int(os.getenv("CACHE_EXPIRATION_LONG", 3600*23)) 
 SESSION_PROXY= os.getenv("SESSION_PROXY", "").strip() or None
 SESSION_A= os.getenv("SESSION_A", "").strip() or None
 SESSION_B= os.getenv("SESSION_B", "").strip() or None
@@ -78,7 +80,7 @@ async def get_stock_info(symbol: str):
                 "symbol": symbol
             }
         
-        r.setex(cache_key, CACHE_EXPIRATION, json.dumps(result))
+        r.setex(cache_key, CACHE_EXPIRATION_LONG, json.dumps(result))
         return {
             "status": True,
             "symbol": symbol,
@@ -162,7 +164,7 @@ async def periods_stock_data(symbol: str, periods: str):
         return {
             "status": True,
             "symbol": symbol,
-            "result": cached_data.decode(),
+            "result": cached_data,
             "cache": "hit"
         }
         
@@ -236,7 +238,7 @@ def get_all_us_stock_tickers():
         tickers = [ticker.replace("/", "-") for ticker in tickers]
 
         # If no cache, store the result in Redis
-        r.setex(cache_key, CACHE_EXPIRATION, json.dumps(tickers))
+        r.setex(cache_key, CACHE_EXPIRATION_LONG, json.dumps(tickers))
         return {
             "status": True,
             "result": tickers
