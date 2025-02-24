@@ -4,6 +4,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "hypercorn main:app --bind \"[::]:$PORT\" --worker-class uvloop --workers 8"
+    "startCommand": "hypercorn main:app --bind \"[::]:$PORT\" --h2 --worker-class uvloop --workers 8"
   }
 }
