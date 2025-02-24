@@ -53,6 +53,7 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
 
 @app.get("/tickers/{symbol}", dependencies=[Depends(verify_api_key)])
 async def get_stock_info(symbol: str):
+    symbol = symbol.upper()
     cache_key = f"stock_info:{symbol}"
     cached_data = r.get(cache_key)
     if cached_data:
@@ -98,6 +99,7 @@ async def get_stock_info(symbol: str):
 @app.get("/history/{symbol}", dependencies=[Depends(verify_api_key)])
 async def history_stock_data(symbol: str, start: str, end: str):
     # Validate date format
+    symbol = symbol.upper()
     if not validate_date_format(start) or not validate_date_format(end):
         return {
             "status": False,
@@ -150,6 +152,7 @@ async def history_stock_data(symbol: str, start: str, end: str):
 @app.get("/periods/{symbol}/{periods}", dependencies=[Depends(verify_api_key)])
 async def periods_stock_data(symbol: str, periods: str):
     # Validate period value
+    symbol = symbol.upper()
     valid_periods = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y']
     if periods not in valid_periods:
         return {
