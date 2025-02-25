@@ -54,7 +54,7 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
 @app.get("/tickers/{symbol}", dependencies=[Depends(verify_api_key)])
 async def get_stock_info(symbol: str):
     symbol = symbol.upper()
-    cache_key = f"stock_info:{symbol}"
+    cache_key = f"stock_ticker_info:{symbol}"
     cached_data = r.get(cache_key)
     if cached_data:
         return {
