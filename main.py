@@ -7,6 +7,7 @@ import string
 import json
 from datetime import datetime
 import redis
+from cachetools import cached, LRUCache, TTLCache
 import base64
 # from dotenv import load_dotenv
 # # 加载 .env 文件中的环境变量
@@ -28,6 +29,7 @@ CACHE_EXPIRATION_LONG = int(os.getenv("CACHE_EXPIRATION_LONG", 3600*23))
 SESSION_PROXY= os.getenv("SESSION_PROXY", "").strip() or None
 SESSION_A= os.getenv("SESSION_A", "").strip() or None
 SESSION_B= os.getenv("SESSION_B", "").strip() or None
+polygon_api_key = os.getenv("POLYGON_API_KEY", "").strip() or None
 
 HTTP_PROXY = os.getenv("HTTP_PROXY", "").strip() or None
 VALID_API_KEY = os.getenv("API_KEY", "default-secret-key").strip()
@@ -40,8 +42,31 @@ def validate_date_format(date_str):
         return False
 
 def generate_random_string(length=8):
-            letters_and_digits = string.ascii_letters + string.digits
-            return ''.join(random.choice(letters_and_digits) for i in range(length))
+    letters_and_digits = string.ascii_letters + string.digits
+    return ''.join(random.choice(letters_and_digits) for i in range(length))
+
+
+@cached(cache=TTLCache(maxsize=500, ttl=3600*24))
+def get_polygon_grouped_daily(date):
+    """
+    Fetch grouped daily stock data from Polygon API for a specific date.
+    https://polygon.io/docs/stocks/getting-started
+
+    This function retrieves aggregated daily stock data for all US stocks on a given date
+    using the Polygon.io API.
+
+    Args:
+        date (str): The date to get data for in the format 'YYYY-MM-DD'
+
+    Returns:
+        dict: JSON response from Polygon API containing the grouped daily stock data.
+              The response includes aggregated metrics like open, close, high, low prices
+              and volume for all US stocks on the specified date.
+    """
+    url = f"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?adjusted=true&apiKey={polygon_api_key}"
+    response = requests.get(url)
+    data = response.json()
+    return data
 
 async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
     if api_key != VALID_API_KEY:
@@ -50,6 +75,38 @@ async def verify_api_key(api_key: str = Header(..., alias="X-API-Key")):
             detail="Invalid API Key"
         )
     return api_key
+
+@app.get("/market/stocks/{date}")
+async def get_entire_stocks_daily(date: str):
+    """
+    获取指定日期的所有美股的数据。
+    Args:
+        date (str): 日期，格式为 'YYYY-MM-DD'。
+    Returns:
+        dict: 包含所有美股日线数据的字典。
+    """
+    if not validate_date_format(date):
+        return {
+            "status": False,
+            "error": "Invalid date format. Please use YYYY-MM-DD format."
+        }
+    try:
+        data = get_polygon_grouped_daily(date)
+        if data['status'] != "OK":
+            return {
+                "status": False,
+                "error": data
+            }
+        return {
+            "status": True,
+            "date": date,
+            "result": data
+        }
+    except Exception as e:
+        return {
+            "status": False,
+            "error": f"API request failed: {str(e)}"
+        }
 
 @app.get("/tickers/{symbol}", dependencies=[Depends(verify_api_key)])
 async def get_stock_info(symbol: str):
