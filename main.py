@@ -85,11 +85,28 @@ async def get_entire_stocks_daily(date: str):
     Returns:
         dict: 包含所有美股日线数据的字典。
     """
+    # Validate date format
     if not validate_date_format(date):
         return {
             "status": False,
-            "error": "Invalid date format. Please use YYYY-MM-DD format."
+            "error": "Invalid date format. Please use YYYY-MM-DD"
         }
+    
+    # Check if date is not greater than current date
+    try:
+        input_date = datetime.strptime(date, "%Y-%m-%d")
+        current_date = datetime.now()
+        if input_date.date() > current_date.date():
+            return {
+                "status": False,
+                "error": "Date cannot be in the future"
+            }
+    except ValueError as e:
+        return {
+            "status": False,
+            "error": f"Invalid date: {str(e)}"
+        }
+    
     try:
         data = get_polygon_grouped_daily(date)
         if data['status'] != "OK":
