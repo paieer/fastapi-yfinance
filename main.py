@@ -246,12 +246,16 @@ async def periods_stock_data(symbol: str, periods: str):
         }
         
     try:
+        intervals = "1d"
+        if periods == "1d":
+            intervals = "1h"
+
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
             Proxy = SESSION_A + random_string + SESSION_B 
-            df = yf.download(symbol,period=periods,rounding=True,proxy=Proxy)
+            df = yf.download(symbol,period=periods,interval=intervals,rounding=True,proxy=Proxy)
         else:
-            df = yf.download(symbol,period=periods,rounding=True,proxy=HTTP_PROXY)
+            df = yf.download(symbol,period=periods,interval=intervals,rounding=True,proxy=HTTP_PROXY)
 
         if df.empty:
             return {
