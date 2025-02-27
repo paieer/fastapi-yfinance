@@ -227,7 +227,7 @@ async def history_stock_data(symbol: str, start: str, end: str):
 async def periods_stock_data(symbol: str, periods: str):
     # Validate period value
     symbol = symbol.upper()
-    valid_periods = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y']
+    valid_periods = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y','ytd', 'max']
     if periods not in valid_periods:
         return {
             "status": False,
