@@ -248,7 +248,7 @@ async def periods_stock_data(symbol: str, periods: str):
     try:
         intervals = "1d"
         if periods == "1d":
-            intervals = "1h"
+            intervals = "30m"
 
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
