@@ -265,7 +265,7 @@ async def periods_stock_data(symbol: str, periods: str):
             }
         
         result = df.to_csv()
-        result = base64.urlsafe_b64encode(result.encode()).decode()
+        result = base64.urlsafe_b64encode(result.encode()).decode().replace('=', '')
 
         r.setex(cache_key, CACHE_EXPIRATION, result)
         return {
