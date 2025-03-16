@@ -9,19 +9,23 @@ from datetime import datetime
 import redis
 from cachetools import cached, LRUCache, TTLCache
 import base64
-# from dotenv import load_dotenv
 # # 加载 .env 文件中的环境变量
+# from dotenv import load_dotenv
 # load_dotenv()
 
 app = FastAPI()
+IS_LOCAL_ENV = os.getenv("IS_LOCAL_ENV", "False").lower() == "true"
 
-redis_url = os.getenv("REDIS_URL")
-r = redis.from_url(redis_url)
-try:
-    r.ping()
-    print("Successfully connected to Redis!")
-except redis.exceptions.ConnectionError as e:
-    print(f"Could not connect to Redis: {e}")
+if not IS_LOCAL_ENV:
+    redis_url = os.getenv("REDIS_URL")
+    r = redis.from_url(redis_url)
+    try:
+        r.ping()
+        print("Successfully connected to Redis!")
+    except redis.exceptions.ConnectionError as e:
+        if not IS_LOCAL_ENV:
+            print(f"Could not connect to Redis: {e}")
+
 
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", 3600))  # Default to 1 hour if not specified
 CACHE_EXPIRATION_SHORT = int(os.getenv("CACHE_EXPIRATION_SHORT", 10*60)) 
@@ -29,8 +33,8 @@ CACHE_EXPIRATION_LONG = int(os.getenv("CACHE_EXPIRATION_LONG", 3600*23))
 SESSION_PROXY= os.getenv("SESSION_PROXY", "").strip() or None
 SESSION_A= os.getenv("SESSION_A", "").strip() or None
 SESSION_B= os.getenv("SESSION_B", "").strip() or None
-polygon_api_key = os.getenv("POLYGON_API_KEY", "").strip() or None
-
+POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "").strip() or None
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip() or None
 HTTP_PROXY = os.getenv("HTTP_PROXY", "").strip() or None
 VALID_API_KEY = os.getenv("API_KEY", "default-secret-key").strip()
 
@@ -63,7 +67,7 @@ def get_polygon_grouped_daily(date):
               The response includes aggregated metrics like open, close, high, low prices
               and volume for all US stocks on the specified date.
     """
-    url = f"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?adjusted=true&apiKey={polygon_api_key}"
+    url = f"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}?adjusted=true&apiKey={POLYGON_API_KEY}"
     response = requests.get(url)
     data = response.json()
     return data
@@ -129,14 +133,16 @@ async def get_entire_stocks_daily(date: str):
 async def get_stock_info(symbol: str):
     symbol = symbol.upper()
     cache_key = f"stock_ticker_info:{symbol}"
-    cached_data = r.get(cache_key)
-    if cached_data:
-        return {
-            "status": True,
-            "symbol": symbol,
-            "result": json.loads(cached_data),
-            "cache": "hit"
-        }
+
+    if not IS_LOCAL_ENV:
+        cached_data = r.get(cache_key)
+        if cached_data:
+            return {
+                "status": True,
+                "symbol": symbol,
+                "result": json.loads(cached_data),
+                "cache": "hit"
+            }
     
     try:
         random_string = generate_random_string()
@@ -155,7 +161,9 @@ async def get_stock_info(symbol: str):
                 "symbol": symbol
             }
         
-        r.setex(cache_key, CACHE_EXPIRATION_LONG, json.dumps(result))
+        if not IS_LOCAL_ENV:
+            r.setex(cache_key, CACHE_EXPIRATION_LONG, json.dumps(result))
+
         return {
             "status": True,
             "symbol": symbol,
@@ -163,12 +171,42 @@ async def get_stock_info(symbol: str):
         }
         
     except Exception as e:
-        # 处理所有可能的异常（网络错误、解析错误等）
-        return {
-            "status": False,
-            "error": f"API request failed: {str(e)}",
-            "symbol": symbol
+        if RAPIDAPI_KEY is None:
+            return {
+                "status": False,
+                "error": f"API request failed: {str(e)}",
+                "symbol": symbol
+            }
+
+        url = f"https://apidojo-yahoo-finance-v1.p.rapidapi.com/stock/v3/get-profile?symbol={symbol}&region=US&lang=en-US"
+        headers = {
+            "X-RapidAPI-Key": RAPIDAPI_KEY,
+            "X-RapidAPI-Host": "apidojo-yahoo-finance-v1.p.rapidapi.com"
         }
+        response = requests.get(url,headers=headers)
+        if response.status_code == 200:
+            result = response.json()
+            if "quoteSummary" in result and "result" in result["quoteSummary"] and len(result["quoteSummary"]["result"]) > 0 and "summaryProfile" in result["quoteSummary"]["result"][0]:
+                profile_data = result["quoteSummary"]["result"][0]["summaryProfile"]
+                if not IS_LOCAL_ENV:
+                    r.setex(cache_key, CACHE_EXPIRATION_LONG, json.dumps(result))
+                return {
+                    "status": True,
+                    "symbol": symbol,
+                    "result": profile_data
+                }
+            else:
+                return {
+                    "status": False,
+                    "error": "Invalid stock symbol",
+                    "symbol": symbol
+                }
+        else:
+            return {
+                "status": False,
+                "error": f"API request failed: {response.status_code}",
+                "symbol": symbol
+            }
 
 @app.get("/history/{symbol}", dependencies=[Depends(verify_api_key)])
 async def history_stock_data(symbol: str, start: str, end: str):
@@ -236,14 +274,16 @@ async def periods_stock_data(symbol: str, periods: str):
         }
     
     cache_key = f"stock_periods:{symbol}:{periods}"
-    cached_data = r.get(cache_key)
-    if cached_data:
-        return {
-            "status": True,
-            "symbol": symbol,
-            "result": cached_data,
-            "cache": "hit"
-        }
+
+    if not IS_LOCAL_ENV:
+        cached_data = r.get(cache_key)
+        if cached_data:
+            return {
+                "status": True,
+                "symbol": symbol,
+                "result": cached_data,
+                "cache": "hit"
+            }
         
     try:
         intervals = "1d"
@@ -265,9 +305,17 @@ async def periods_stock_data(symbol: str, periods: str):
             }
         
         result = df.to_csv()
-        result = base64.urlsafe_b64encode(result.encode()).decode().replace('=', '')
+        if len(df) < 10:
+            return {
+                "status": False,
+                "error": "Data rows are less than 10 rows.",
+                "symbol": symbol
+            }
 
-        r.setex(cache_key, CACHE_EXPIRATION, result)
+        if not IS_LOCAL_ENV:
+            result = base64.urlsafe_b64encode(result.encode()).decode().replace('=', '')
+            r.setex(cache_key, CACHE_EXPIRATION, result)
+
         return {
             "status": True,
             "symbol": symbol,
