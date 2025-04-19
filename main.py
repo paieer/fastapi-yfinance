@@ -378,3 +378,22 @@ def get_all_us_stock_tickers():
             "status": False,
             "error": f"request failed: {str(e)}"
         }
+
+@app.get("/")
+def root():
+    return {
+        "status": True,
+        "message": "Welcome to the Stock API. Please use the endpoints to fetch stock data."
+    }
+
+@app.get("/health")
+def health_check():
+    """
+    健康检查接口，返回服务的健康状态。
+    Returns:
+        dict: 包含服务健康状态的字典。
+    """
+    return {
+        "status": True,
+        "message": "Service is running"
+    }
