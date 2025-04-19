@@ -9,4 +9,4 @@ ADD . /app/
 
 EXPOSE 8001
 
-CMD ["hypercorn", "main:app", "-b", "0.0.0.0:3009", "--reload"]
+CMD ["hypercorn", "main:app", "-b", "0.0.0.0:3000", "--reload"]
