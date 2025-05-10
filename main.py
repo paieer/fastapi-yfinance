@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 import requests
 import yfinance as yf
+import yfinance_cache as yfc
 import os
 import random
 import string
@@ -148,9 +149,9 @@ async def get_stock_info(symbol: str):
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
             Proxy = SESSION_A + random_string + SESSION_B 
-            ticker = yf.Ticker(symbol, proxy=Proxy)
+            ticker = yfc.Ticker(symbol, proxy=Proxy)
         else:
-            ticker = yf.Ticker(symbol, proxy=HTTP_PROXY)
+            ticker = yfc.Ticker(symbol, proxy=HTTP_PROXY)
             
         result = ticker.info
         # 处理无效的股票代码或空数据
@@ -233,10 +234,10 @@ async def history_stock_data(symbol: str, start: str, end: str):
         random_string = generate_random_string()
         if SESSION_PROXY == "TRUE":
             Proxy = SESSION_A + random_string + SESSION_B 
-            ticker = yf.Ticker(symbol, proxy=Proxy)
+            ticker = yfc.Ticker(symbol, proxy=Proxy)
             df = ticker.history(start=start, end=end, proxy=Proxy)
         else:
-            ticker = yf.Ticker(symbol, proxy=HTTP_PROXY)
+            ticker = yfc.Ticker(symbol, proxy=HTTP_PROXY)
             df = ticker.history(start=start, end=end, proxy=HTTP_PROXY)
 
         if df.empty:

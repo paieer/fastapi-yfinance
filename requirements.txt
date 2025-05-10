@@ -1,6 +1,7 @@
 fastapi
 hypercorn[uvloop]
 yfinance
+yfinance_cache
 redis
 cachetools
 python-dotenv
