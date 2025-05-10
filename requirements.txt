@@ -1,6 +1,6 @@
 fastapi
 hypercorn[uvloop]
-yfinance
+yfinance==0.2.59
 yfinance_cache
 redis
 cachetools

@@ -10,9 +10,8 @@ from datetime import datetime
 import redis
 from cachetools import cached, LRUCache, TTLCache
 import base64
-# # 加载 .env 文件中的环境变量
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
 IS_LOCAL_ENV = os.getenv("IS_LOCAL_ENV", "False").lower() == "true"
@@ -26,7 +25,8 @@ if not IS_LOCAL_ENV:
     except redis.exceptions.ConnectionError as e:
         if not IS_LOCAL_ENV:
             print(f"Could not connect to Redis: {e}")
-
+else:
+    yf.enable_debug_mode()
 
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", 3600))  # Default to 1 hour if not specified
 CACHE_EXPIRATION_SHORT = int(os.getenv("CACHE_EXPIRATION_SHORT", 10*60)) 
