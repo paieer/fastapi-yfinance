@@ -39,7 +39,7 @@ POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "").strip() or None
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip() or None
 HTTP_PROXY = os.getenv("HTTP_PROXY", "").strip() or None
 VALID_API_KEY = os.getenv("API_KEY", "default-secret-key").strip()
-TIME_OUT = int(os.getenv("TIMEOUT", 20))
+TIME_OUT = int(os.getenv("TIME_OUT", 20))
 
 def validate_date_format(date_str):
     try:
