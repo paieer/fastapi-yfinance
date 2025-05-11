@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 import requests
 import yfinance as yf
-import yfinance_cache as yfc
+from yfinance.exceptions import YFPricesMissingError
 import os
 import random
 import string
@@ -11,10 +11,11 @@ import redis
 from cachetools import cached, LRUCache, TTLCache
 import base64
 from dotenv import load_dotenv
+import logging
 load_dotenv()
 
 app = FastAPI()
-IS_LOCAL_ENV = os.getenv("IS_LOCAL_ENV", "False").lower() == "true"
+IS_LOCAL_ENV = os.getenv("IS_LOCAL_ENV", "false").strip().lower() == "true"
 
 if not IS_LOCAL_ENV:
     redis_url = os.getenv("REDIS_URL")
@@ -31,13 +32,14 @@ else:
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", 3600))  # Default to 1 hour if not specified
 CACHE_EXPIRATION_SHORT = int(os.getenv("CACHE_EXPIRATION_SHORT", 10*60)) 
 CACHE_EXPIRATION_LONG = int(os.getenv("CACHE_EXPIRATION_LONG", 3600*23)) 
-SESSION_PROXY= os.getenv("SESSION_PROXY", "").strip() or None
+SESSION_PROXY= os.getenv("SESSION_PROXY", "false").strip().lower() == "true"
 SESSION_A= os.getenv("SESSION_A", "").strip() or None
 SESSION_B= os.getenv("SESSION_B", "").strip() or None
 POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "").strip() or None
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip() or None
 HTTP_PROXY = os.getenv("HTTP_PROXY", "").strip() or None
 VALID_API_KEY = os.getenv("API_KEY", "default-secret-key").strip()
+TIME_OUT = int(os.getenv("TIMEOUT", 20))
 
 def validate_date_format(date_str):
     try:
@@ -145,15 +147,16 @@ async def get_stock_info(symbol: str):
                 "cache": "hit"
             }
     
+    random_string = generate_random_string()
+    Proxy = SESSION_A + random_string + SESSION_B
+    if SESSION_PROXY:
+        Proxy = SESSION_A + random_string + SESSION_B
+    else:
+        Proxy = HTTP_PROXY
+    yf.set_config(proxy=Proxy)
+
     try:
-        random_string = generate_random_string()
-        if SESSION_PROXY == "TRUE":
-            Proxy = SESSION_A + random_string + SESSION_B 
-            ticker = yfc.Ticker(symbol, proxy=Proxy)
-        else:
-            ticker = yfc.Ticker(symbol, proxy=HTTP_PROXY)
-            
-        result = ticker.info
+        result = yf.Ticker(symbol).info
         # 处理无效的股票代码或空数据
         if not result or 'symbol' not in result:
             return {
@@ -230,15 +233,16 @@ async def history_stock_data(symbol: str, start: str, end: str):
             "symbol": symbol
         }
 
+    random_string = generate_random_string()
+    Proxy = SESSION_A + random_string + SESSION_B
+    if SESSION_PROXY:
+        Proxy = SESSION_A + random_string + SESSION_B
+    else:
+        Proxy = HTTP_PROXY
+    yf.set_config(proxy=Proxy)
+    
     try:
-        random_string = generate_random_string()
-        if SESSION_PROXY == "TRUE":
-            Proxy = SESSION_A + random_string + SESSION_B 
-            ticker = yfc.Ticker(symbol, proxy=Proxy)
-            df = ticker.history(start=start, end=end, proxy=Proxy)
-        else:
-            ticker = yfc.Ticker(symbol, proxy=HTTP_PROXY)
-            df = ticker.history(start=start, end=end, proxy=HTTP_PROXY)
+        df = yf.Ticker(symbol).history(start=start, end=end)
 
         if df.empty:
             return {
@@ -275,7 +279,6 @@ async def periods_stock_data(symbol: str, periods: str):
         }
     
     cache_key = f"stock_periods:{symbol}:{periods}"
-
     if not IS_LOCAL_ENV:
         cached_data = r.get(cache_key)
         if cached_data:
@@ -286,17 +289,39 @@ async def periods_stock_data(symbol: str, periods: str):
                 "cache": "hit"
             }
         
+    random_string = generate_random_string()
+    Proxy = SESSION_A + random_string + SESSION_B
+    if SESSION_PROXY:
+        Proxy = SESSION_A + random_string + SESSION_B
+    else:
+        Proxy = HTTP_PROXY
+    yf.set_config(proxy=Proxy)
+
+    # Check if the symbol is delisted
+    try:
+        histData = yf.Ticker(symbol)
+        histData.history(period="1wk",raise_errors=True,timeout=TIME_OUT)
+
+    except YFPricesMissingError as e:
+        return {
+            "status": False,
+            "error": f"YFPricesMissingError: {str(e)}",
+            "symbol": symbol
+        }
+    
+    except Exception as e:
+        return {
+            "status": False,
+            "error": f"request failed: {str(e)}",
+            "symbol": symbol
+        }
+
     try:
         intervals = "1d"
         if periods == "1d":
             intervals = "30m"
 
-        random_string = generate_random_string()
-        if SESSION_PROXY == "TRUE":
-            Proxy = SESSION_A + random_string + SESSION_B 
-            df = yf.download(symbol,period=periods,interval=intervals,rounding=True,proxy=Proxy)
-        else:
-            df = yf.download(symbol,period=periods,interval=intervals,rounding=True,proxy=HTTP_PROXY)
+        df = yf.download(symbol,period=periods,interval=intervals,rounding=True,timeout=TIME_OUT)
 
         if df.empty:
             return {
