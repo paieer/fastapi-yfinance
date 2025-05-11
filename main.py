@@ -155,6 +155,18 @@ async def get_stock_info(symbol: str):
         Proxy = HTTP_PROXY
     yf.set_config(proxy=Proxy)
 
+    # Check if the symbol is delisted
+    try:
+        histData = yf.Ticker(symbol)
+        histData.history(period="1wk",raise_errors=True,timeout=TIME_OUT)
+
+    except YFPricesMissingError as e:
+        return {
+            "status": False,
+            "error": f"YFPricesMissingError: {str(e)}",
+            "symbol": symbol
+        }
+    
     try:
         result = yf.Ticker(symbol).info
         # 处理无效的股票代码或空数据
