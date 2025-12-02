@@ -254,7 +254,7 @@ async def history_stock_data(symbol: str, start: str, end: str):
     yf.set_config(proxy=Proxy)
     
     try:
-        df = yf.Ticker(symbol).history(start=start, end=end)
+        df = yf.Ticker(symbol).history(start=start, end=end,repair=True)
 
         if df.empty:
             return {
