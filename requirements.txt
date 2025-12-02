@@ -1,6 +1,6 @@
 fastapi
 hypercorn[uvloop]
-yfinance
+yfinance==0.2.66
 redis
 cachetools
 python-dotenv
